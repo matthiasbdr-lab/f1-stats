@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F1 Stats</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; color: #fff; font-family: Arial, sans-serif; }
+header { background: #e10600; padding: 20px 40px; display: flex; align-items: center; gap: 20px; }
+header h1 { font-size: 28px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; }
+header span { font-size: 14px; opacity: 0.8; }
+nav { background: #1a1a1a; padding: 0 40px; display: flex; border-bottom: 2px solid #e10600; overflow-x: auto; }
+nav button { background: none; border: none; color: #aaa; padding: 16px 24px; cursor: pointer; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s; white-space: nowrap; }
+nav button:hover, nav button.active { color: #fff; border-bottom: 3px solid #e10600; margin-bottom: -2px; }
+.year-selector { background: #111; padding: 16px 40px; display: flex; gap: 12px; align-items: center; }
+.year-selector span { color: #aaa; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+.year-btn { background: #222; border: 1px solid #333; color: #aaa; padding: 8px 20px; cursor: pointer; border-radius: 4px; font-size: 13px; transition: all 0.2s; }
+.year-btn:hover, .year-btn.active { background: #e10600; border-color: #e10600; color: #fff; }
+.container { padding: 30px 40px; }
+.section { display: none; }
+.section.active { display: block; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 30px; }
+.card { background: #1a1a1a; border-radius: 8px; padding: 24px; border: 1px solid #222; }
+.card h2 { font-size: 16px; text-transform: uppercase; letter-spacing: 2px; color: #e10600; margin-bottom: 20px; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #666; border-bottom: 1px solid #333; }
+td { padding: 10px 12px; font-size: 14px; border-bottom: 1px solid #1e1e1e; vertical-align: middle; }
+tr:hover td { background: #222; }
+.pos { font-weight: 900; color: #e10600; }
+.pts { font-weight: 700; }
+.time { color: #00d2be; font-family: monospace; font-size: 13px; }
+.team-pill { display: inline-flex; align-items: center; gap: 6px; }
+.team-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.team-name { color: #aaa; font-size: 12px; }
+.driver-name { font-weight: 700; }
+.gp-selector { margin-bottom: 24px; }
+.gp-selector select { background: #222; border: 1px solid #333; color: #fff; padding: 10px 16px; border-radius: 4px; font-size: 14px; width: 350px; cursor: pointer; }
+.chart-card { background: #1a1a1a; border-radius: 8px; padding: 24px; border: 1px solid #222; margin-bottom: 24px; }
+.chart-card h2 { font-size: 16px; text-transform: uppercase; letter-spacing: 2px; color: #e10600; margin-bottom: 20px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab { background: #222; border: 1px solid #333; color: #aaa; padding: 8px 16px; cursor: pointer; border-radius: 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s; }
+.tab:hover, .tab.active { background: #e10600; border-color: #e10600; color: #fff; }
+.countdown-box { background: #111; border: 1px solid #e10600; border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 30px; }
+.countdown-box .next-gp-label { font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #e10600; margin-bottom: 8px; }
+.countdown-box .gp-name { font-size: 24px; font-weight: 900; margin-bottom: 20px; }
+.countdown-numbers { display: flex; justify-content: center; gap: 24px; }
+.countdown-unit .number { font-size: 48px; font-weight: 900; color: #e10600; line-height: 1; }
+.countdown-unit .label { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #666; margin-top: 4px; text-align: center; }
+.calendar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.race-card { background: #1a1a1a; border: 1px solid #222; border-radius: 8px; padding: 20px; transition: all 0.2s; position: relative; cursor: pointer; }
+.race-card:hover { border-color: #e10600; transform: translateY(-2px); }
+.race-card.next-race { border-color: #e10600; }
+.race-card.past-race { opacity: 0.6; }
+.race-card .round-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+.race-card .country-code { font-size: 28px; font-weight: 900; color: #e10600; letter-spacing: 2px; margin-bottom: 6px; font-family: monospace; }
+.race-card .race-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.race-card .race-date { font-size: 12px; color: #aaa; margin-top: 8px; }
+.next-badge { position: absolute; top: 12px; right: 12px; background: #e10600; color: #fff; font-size: 9px; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; font-weight: 700; }
+.done-badge { position: absolute; top: 12px; right: 12px; background: #333; color: #666; font-size: 9px; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; }
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 30px; width: 90%; max-width: 700px; max-height: 85vh; overflow-y: auto; position: relative; }
+.modal-close { position: absolute; top: 16px; right: 16px; background: #333; border: none; color: #fff; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 16px; }
+.modal-close:hover { background: #e10600; }
+.modal h2 { font-size: 20px; font-weight: 900; margin-bottom: 6px; }
+.modal .modal-subtitle { color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 24px; }
+.modal-year-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.tyre-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.tyre-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.tyre-legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+.driver-checkboxes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.driver-checkbox { display: flex; align-items: center; gap: 6px; background: #222; border: 1px solid #333; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+.circuits-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-bottom: 30px; }
+.circuit-card { background: #1a1a1a; border: 1px solid #222; border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.2s; }
+.circuit-card:hover { border-color: #e10600; transform: translateY(-2px); }
+.circuit-card .circuit-code { font-size: 22px; font-weight: 900; color: #e10600; font-family: monospace; margin-bottom: 4px; }
+.circuit-card .circuit-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.circuit-card .circuit-info { font-size: 11px; color: #666; }
+.circuit-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.circuit-info-panel { background: #1a1a1a; border-radius: 8px; border: 1px solid #222; overflow: hidden; }
+.circuit-tabs { display: flex; border-bottom: 1px solid #222; }
+.circuit-tab { background: none; border: none; color: #aaa; padding: 12px 16px; cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s; }
+.circuit-tab:hover, .circuit-tab.active { color: #fff; border-bottom: 2px solid #e10600; margin-bottom: -1px; }
+.circuit-tab-content { display: none; padding: 20px; }
+.circuit-tab-content.active { display: block; }
+.info-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #1e1e1e; font-size: 12px; }
+.info-row:last-child { border-bottom: none; }
+.info-lbl { color: #666; }
+.info-val { font-weight: 700; font-size: 12px; }
+.section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #e10600; margin: 14px 0 8px; font-weight: 700; }
+.drs-zone { background: #111; border-left: 3px solid #00d2be; border-radius: 4px; padding: 8px 12px; margin-bottom: 8px; }
+.drs-zone-name { font-size: 12px; font-weight: 700; color: #00d2be; margin-bottom: 4px; }
+.drs-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px; }
+.drs-lbl { color: #666; }
+.drs-val { color: #fff; }
+.sector-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin: 8px 0 4px; }
+.s1 { background: #e10600; }
+.s2 { background: #00d2be; }
+.s3 { background: #ff8700; }
+.sector-legend { display: flex; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.sl { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #aaa; }
+.sl-dot { width: 8px; height: 8px; border-radius: 50%; }
+.rule-block { background: #111; border-left: 3px solid; border-radius: 4px; padding: 10px 12px; margin-bottom: 10px; }
+.rule-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+.rule-desc { font-size: 11px; color: #aaa; line-height: 1.6; }
+.rule-tag { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 3px; margin-top: 5px; font-weight: 700; text-transform: uppercase; }
+.pit-team { display: flex; align-items: center; gap: 10px; padding: 5px 8px; background: #111; border-radius: 4px; font-size: 12px; margin-bottom: 4px; }
+.pit-num { font-size: 11px; color: #666; width: 40px; font-family: monospace; }
+.pit-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.deg-bar { height: 5px; border-radius: 3px; background: #333; overflow: hidden; margin-top: 4px; }
+.deg-fill { height: 100%; border-radius: 3px; }
+.back-btn { background: #222; border: 1px solid #333; color: #aaa; padding: 8px 16px; cursor: pointer; border-radius: 4px; font-size: 12px; margin-bottom: 20px; transition: all 0.2s; }
+.back-btn:hover { border-color: #e10600; color: #fff; }
+.map-container { background: #111; border-radius: 8px; padding: 12px; border: 1px solid #222; }
+.no-fia { color: #666; font-size: 12px; padding: 20px 0; text-align: center; }
+.loading { text-align: center; padding: 60px; color: #666; }
+@media (max-width: 768px) { .grid { grid-template-columns: 1fr; } .container { padding: 16px; } .circuit-detail-grid { grid-template-columns: 1fr; } .countdown-unit .number { font-size: 32px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>F1 Stats</h1>
+  <span>Statistiques Formula 1</span>
+</header>
+<nav>
+  <button class="active" onclick="showSection('overview',this)">Vue generale</button>
+  <button onclick="showSection('calendar',this)">Calendrier 2026</button>
+  <button onclick="showSection('circuits',this)">Circuits</button>
+  <button onclick="showSection('drivers',this)">Pilotes</button>
+  <button onclick="showSection('constructors',this)">Constructeurs</button>
+  <button onclick="showSection('gp',this)">Resultats GP</button>
+</nav>
+<div class="year-selector" id="year-selector">
+  <span>Saison :</span>
+  <button class="year-btn active" onclick="setYear(2024,this)">2024</button>
+  <button class="year-btn" onclick="setYear(2025,this)">2025</button>
+  <button class="year-btn" onclick="setYear(2026,this)">2026</button>
+</div>
+<div class="container">
+
+  <div id="overview" class="section active">
+    <div class="grid">
+      <div class="card"><h2>Top 5 Pilotes</h2><table><tr><th>#</th><th>Pilote</th><th>Equipe</th><th>Pts</th></tr><tbody id="overview-drivers"></tbody></table></div>
+      <div class="card"><h2>Top 5 Constructeurs</h2><table><tr><th>#</th><th>Equipe</th><th>Pts</th></tr><tbody id="overview-constructors"></tbody></table></div>
+    </div>
+    <div class="chart-card"><h2>Evolution du championnat - Top 5 Pilotes</h2><canvas id="chart-overview" height="100"></canvas></div>
+  </div>
+
+  <div id="calendar" class="section">
+    <div id="countdown-container"></div>
+    <div class="calendar-grid" id="calendar-grid"></div>
+  </div>
+
+  <div id="circuits" class="section">
+    <div id="circuits-list">
+      <div class="circuits-grid" id="circuits-grid"></div>
+    </div>
+    <div id="circuit-detail-view" style="display:none">
+      <button class="back-btn" onclick="showCircuitsList()">← Retour aux circuits</button>
+      <div class="circuit-detail-grid" id="circuit-detail"></div>
+    </div>
+  </div>
+
+  <div id="drivers" class="section">
+    <div class="card"><h2>Classement Pilotes</h2><table><tr><th>#</th><th>Pilote</th><th>Equipe</th><th>Pts</th></tr><tbody id="drivers-table"></tbody></table></div>
+  </div>
+
+  <div id="constructors" class="section">
+    <div class="card"><h2>Classement Constructeurs</h2><table><tr><th>#</th><th>Equipe</th><th>Pts</th></tr><tbody id="constructors-table"></tbody></table></div>
+  </div>
+
+  <div id="gp" class="section">
+    <div class="gp-selector"><select id="gp-select" onchange="showGP()"></select></div>
+    <div class="tabs">
+      <button class="tab active" onclick="showGPTab('results',this)">Resultats Course</button>
+      <button class="tab" onclick="showGPTab('quali',this)">Qualifications</button>
+      <button class="tab" onclick="showGPTab('laps',this)">Meilleurs Tours</button>
+      <button class="tab" onclick="showGPTab('tyres',this)">Strategie Pneus</button>
+    </div>
+    <div class="card">
+      <h2 id="gp-title">Resultats</h2>
+      <div id="gp-results-tab"><table><tr><th>#</th><th>Pilote</th><th>Equipe</th><th>Pts</th></tr><tbody id="gp-table"></tbody></table></div>
+      <div id="gp-quali-tab" style="display:none"><table><tr><th>#</th><th>Pilote</th><th>Equipe</th><th>Q1</th><th>Q2</th><th>Q3</th></tr><tbody id="quali-table"></tbody></table></div>
+      <div id="gp-laps-tab" style="display:none"><table><tr><th>#</th><th>Pilote</th><th>Meilleur Tour</th></tr><tbody id="laps-table"></tbody></table></div>
+      <div id="gp-tyres-tab" style="display:none">
+        <div class="tyre-legend">
+          <div class="tyre-legend-item"><div class="tyre-legend-dot" style="background:#e8002d"></div>SOFT</div>
+          <div class="tyre-legend-item"><div class="tyre-legend-dot" style="background:#ffd700"></div>MEDIUM</div>
+          <div class="tyre-legend-item"><div class="tyre-legend-dot" style="background:#f0f0f0"></div>HARD</div>
+          <div class="tyre-legend-item"><div class="tyre-legend-dot" style="background:#39b54a"></div>INTERMEDIATE</div>
+          <div class="tyre-legend-item"><div class="tyre-legend-dot" style="background:#0067ff"></div>WET</div>
+          <div class="tyre-legend-item">▲ Arret stand</div>
+        </div>
+        <div class="driver-checkboxes" id="driver-checkboxes"></div>
+        <canvas id="chart-tyres" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('modal-overlay').classList.remove('open')">x</button>
+    <div class="modal-subtitle">Historique</div>
+    <h2 id="modal-gp-name"></h2>
+    <div class="modal-year-tabs" id="modal-year-tabs"></div>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+let DATA={},currentYear=2024,overviewChart=null,tyreChart=null,modalGP="",modalYear=2025,countdownInterval=null,selectedDrivers=new Set();
+const TYRE_COLORS={"SOFT":"#e8002d","MEDIUM":"#ffd700","HARD":"#f0f0f0","INTERMEDIATE":"#39b54a","WET":"#0067ff"};
+const TYRE_ORDER=["WET","INTERMEDIATE","HARD","MEDIUM","SOFT"];
+const TEAM_COLORS={"McLaren":"#FF8000","Mercedes":"#27F4D2","Red Bull":"#3671C6","Ferrari":"#E8002D","Williams":"#64C4FF","Racing Bulls":"#6692FF","Aston Martin":"#229971","Haas":"#B6BABD","Audi":"#e0e0e0","Alpine":"#FF87BC","Cadillac":"#fff"};
+
+fetch("f1_data.json").then(r=>r.json()).then(d=>{DATA=d;renderCalendar();renderCircuits();renderAll();}).catch(()=>{document.querySelector(".container").innerHTML="<div class='loading'>Erreur de chargement.</div>";});
+
+function getTeamColor(team){if(!team)return"#666";for(const k of Object.keys(TEAM_COLORS)){if(team.includes(k.split(" ")[0]))return TEAM_COLORS[k];}return"#666";}
+function getCC(gp){return(DATA.country_codes||{})[gp]||gp.replace(" Grand Prix","").substring(0,3).toUpperCase();}
+function teamPill(team){const c=getTeamColor(team);return"<span class='team-pill'><span class='team-dot' style='background:"+c+"'></span><span class='team-name'>"+(team||"")+"</span></span>";}
+function driverCell(abbr,team){return"<span class='driver-name' style='color:"+getTeamColor(team)+"'>"+abbr+"</span>";}
+function medals(i){if(i===0)return"<span style='color:#FFD700;font-weight:900'>1</span>";if(i===1)return"<span style='color:#C0C0C0;font-weight:900'>2</span>";if(i===2)return"<span style='color:#CD7F32;font-weight:900'>3</span>";return"<span class='pos'>"+(i+1)+"</span>";}
+
+function showSection(id,btn){document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));document.getElementById(id).classList.add("active");btn.classList.add("active");document.getElementById("year-selector").style.display=(id==="calendar"||id==="circuits")?"none":"flex";}
+function setYear(year,btn){currentYear=year;document.querySelectorAll(".year-btn").forEach(b=>b.classList.remove("active"));btn.classList.add("active");renderAll();}
+
+function renderCalendar(){
+  const cal=DATA.calendar_2026||[],now=new Date();let next=null,html="";
+  cal.forEach(r=>{
+    const d=new Date(r.date),isPast=d<now,isNext=!next&&!isPast;
+    if(isNext)next=r;
+    const badge=isNext?"<span class='next-badge'>Prochain</span>":isPast?"<span class='done-badge'>Termine</span>":"";
+    const dateStr=d.toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});
+    const css="race-card"+(isPast?" past-race":"")+(isNext?" next-race":"");
+    html+="<div class='"+css+"' onclick='openModal(this)' data-name='"+r.name+"'>"+badge+"<div class='round-label'>Round "+r.round+"</div><div class='country-code'>"+getCC(r.name)+"</div><div class='race-name'>"+r.name+"</div><div class='race-date'>"+dateStr+"</div></div>";
+  });
+  document.getElementById("calendar-grid").innerHTML=html;
+  if(countdownInterval)clearInterval(countdownInterval);
+  if(next){renderCountdown(next);countdownInterval=setInterval(()=>renderCountdown(next),1000);}
+}
+
+function renderCountdown(race){
+  const diff=new Date(race.date)-new Date();
+  if(diff<=0){document.getElementById("countdown-container").innerHTML="<div class='countdown-box'><div class='next-gp-label'>Course en cours</div><div class='gp-name'>"+race.name+"</div></div>";return;}
+  const pad=n=>String(n).padStart(2,"0"),days=Math.floor(diff/86400000),hours=Math.floor((diff%86400000)/3600000),minutes=Math.floor((diff%3600000)/60000),seconds=Math.floor((diff%60000)/1000);
+  document.getElementById("countdown-container").innerHTML="<div class='countdown-box'><div class='next-gp-label'>Prochain Grand Prix</div><div class='gp-name'>"+getCC(race.name)+" - "+race.name+"</div><div class='countdown-numbers'>"+ ["Jours","Heures","Minutes","Secondes"].map((l,i)=>"<div class='countdown-unit'><div class='number'>"+pad([days,hours,minutes,seconds][i])+"</div><div class='label'>"+l+"</div></div>").join("")+"</div></div>";
+}
+
+function renderCircuits(){
+  const circuits=DATA.circuit_data||{},cal=DATA.calendar_2026||[];
+  let html="";
+  cal.forEach(race=>{
+    const c=circuits[race.name];if(!c)return;
+    const info=c.info||{},code=getCC(race.name);
+    const dateStr=new Date(race.date).toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
+    html+="<div class='circuit-card' onclick='showCircuit(this)' data-name='"+race.name+"'>"+
+      "<div class='circuit-code'>"+code+"</div>"+
+      "<div class='circuit-name'>"+race.name+"</div>"+
+      "<div class='circuit-info'>"+(info.length||"")+" · "+(info.laps||"")+" tours · "+dateStr+"</div>"+
+      "</div>";
+  });
+  document.getElementById("circuits-grid").innerHTML=html;
+}
+
+function showCircuit(el){
+  const gpName=el.dataset.name,circuit=(DATA.circuit_data||{})[gpName];
+  if(!circuit)return;
+  document.getElementById("circuits-list").style.display="none";
+  document.getElementById("circuit-detail-view").style.display="block";
+  const info=circuit.info||{},fia=circuit.fia_data||null,corners=circuit.corners||[];
+  const trackX=circuit.track_x||[],trackY=circuit.track_y||[];
+  const code=getCC(gpName);
+
+  // Carte SVG
+  let mapHtml="<div class='map-container'>";
+  mapHtml+="<div style='font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px'>Trace GPS FastF1</div>";
+  if(trackX.length>1){
+    const minX=Math.min(...trackX),maxX=Math.max(...trackX),minY=Math.min(...trackY),maxY=Math.max(...trackY);
+    const W=380,H=280,pad=24;
+    const scale=Math.min((W-pad*2)/(maxX-minX||1),(H-pad*2)/(maxY-minY||1));
+    const offX=pad+((W-pad*2)-(maxX-minX)*scale)/2,offY=pad+((H-pad*2)-(maxY-minY)*scale)/2;
+    const toS=(x,y)=>[(offX+(x-minX)*scale),(H-(offY+(y-minY)*scale))];
+    const pts=trackX.map((x,i)=>toS(x,trackY[i]).join(",")).join(" ");
+    let cHtml="";
+    corners.forEach(c=>{const[cx,cy]=toS(c.x,c.y);cHtml+="<circle cx='"+cx+"' cy='"+cy+"' r='4' fill='#e10600'/><text x='"+cx+"' y='"+(cy+1)+"' text-anchor='middle' dominant-baseline='central' font-size='5.5' fill='#fff' font-weight='bold'>"+c.number+"</text>";});
+    const[sfX,sfY]=toS(trackX[0],trackY[0]);
+    mapHtml+="<svg width='100%' viewBox='0 0 "+W+" "+H+"' style='background:#111;border-radius:6px'>"+
+      "<polyline points='"+pts+"' fill='none' stroke='#444' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/>"+
+      "<polyline points='"+pts+"' fill='none' stroke='#666' stroke-width='1.5' stroke-dasharray='6 5'/>"+
+      cHtml+
+      "<rect x='"+(sfX-5)+"' y='"+(sfY-4)+"' width='10' height='8' rx='2' fill='#fff' stroke='#e10600' stroke-width='1.5'/>"+
+      "<text x='"+sfX+"' y='"+(sfY-10)+"' text-anchor='middle' font-size='7' fill='#e10600' font-weight='bold'>SF</text>"+
+      "</svg>";
+  }
+  mapHtml+="<div style='display:flex;gap:12px;margin-top:8px;flex-wrap:wrap'>"+
+    "<div style='font-size:10px;color:#aaa;display:flex;align-items:center;gap:4px'><svg width='16' height='5'><line x1='0' y1='2.5' x2='16' y2='2.5' stroke='#444' stroke-width='4'/></svg>Trace</div>"+
+    "<div style='font-size:10px;color:#aaa;display:flex;align-items:center;gap:4px'><svg width='10' height='10'><circle cx='5' cy='5' r='4' fill='#e10600'/></svg>Virage</div>"+
+    "<div style='font-size:10px;color:#aaa;display:flex;align-items:center;gap:4px'><svg width='10' height='8'><rect x='0' y='0' width='10' height='8' rx='2' fill='#fff' stroke='#e10600' stroke-width='1.5'/></svg>SF</div>"+
+    "</div></div>";
+
+  // Panel infos
+  let infoHtml="<div class='circuit-info-panel'>";
+  infoHtml+="<div style='padding:16px 20px;border-bottom:1px solid #222'><div style='font-size:22px;font-weight:900;color:#e10600;font-family:monospace'>"+code+"</div><div style='font-size:15px;font-weight:700'>"+gpName+"</div></div>";
+
+  // Onglets
+  infoHtml+="<div class='circuit-tabs'>";
+  infoHtml+="<button class='circuit-tab active' onclick='switchCircuitTab("tab-general",this)'>General</button>";
+  if(fia){
+    infoHtml+="<button class='circuit-tab' onclick='switchCircuitTab("tab-sectors",this)'>Secteurs & Aero</button>";
+    infoHtml+="<button class='circuit-tab' onclick='switchCircuitTab("tab-rules",this)'>Regles 2026</button>";
+    infoHtml+="<button class='circuit-tab' onclick='switchCircuitTab("tab-pit",this)'>Pit Lane</button>";
+  }
+  infoHtml+="</div>";
+
+  // Onglet General
+  const deg=info.tyre_deg||3,degPct=deg/5*100,degColor=degPct>=80?"#e10600":degPct>=60?"#ff8700":degPct>=40?"#ffd700":"#39b54a",degLabel=degPct>=80?"Tres elevee":degPct>=60?"Elevee":degPct>=40?"Moyenne":"Faible";
+  infoHtml+="<div id='tab-general' class='circuit-tab-content active'>";
+  infoHtml+="<div class='info-row'><span class='info-lbl'>Longueur</span><span class='info-val'>"+(info.length||"-")+"</span></div>";
+  infoHtml+="<div class='info-row'><span class='info-lbl'>Tours</span><span class='info-val'>"+(fia?fia.circuit_data.laps:info.laps||"-")+"</span></div>";
+  infoHtml+="<div class='info-row'><span class='info-lbl'>Sens</span><span class='info-val'>"+(info.direction||"-")+"</span></div>";
+  infoHtml+="<div class='info-row'><span class='info-lbl'>Virages</span><span class='info-val'>"+corners.length+"</span></div>";
+  infoHtml+="<div class='info-row'><span class='info-lbl'>Zones Aero Active</span><span class='info-val'>"+(fia?fia.drs_zones.length:info.drs_zones||"-")+"</span></div>";
+  if(fia)infoHtml+="<div class='info-row'><span class='info-lbl'>Speed Trap</span><span class='info-val'>"+fia.speed_trap+"</span></div>";
+  infoHtml+="<div class='info-row'><span class='info-lbl'>Degradation pneus</span><span class='info-val'><div class='deg-bar'><div class='deg-fill' style='width:"+degPct+"%;background:"+degColor+"'></div></div><span style='color:"+degColor+";font-size:11px'>"+degLabel+"</span></span></div>";
+  if(info.slow_corners)infoHtml+="<div class='info-row'><span class='info-lbl'>Virages lents</span><span class='info-val' style='font-size:11px'>"+info.slow_corners+"</span></div>";
+  if(info.fast_corners)infoHtml+="<div class='info-row'><span class='info-lbl'>Virages rapides</span><span class='info-val' style='font-size:11px'>"+info.fast_corners+"</span></div>";
+  if(info.straights)infoHtml+="<div class='info-row'><span class='info-lbl'>Lignes droites</span><span class='info-val' style='font-size:11px'>"+info.straights+"</span></div>";
+  infoHtml+="</div>";
+
+  if(fia){
+    // Onglet Secteurs & Aero
+    infoHtml+="<div id='tab-sectors' class='circuit-tab-content'>";
+    infoHtml+="<div class='section-title'>Secteurs</div>";
+    const s=fia.sectors,total=s.reduce((a,b)=>a+parseFloat(b.length),0);
+    infoHtml+="<div class='sector-bar'>";
+    s.forEach((sec,i)=>{const pct=(parseFloat(sec.length)/total*100).toFixed(1);infoHtml+="<div class='"+(["s1","s2","s3"][i])+"' style='width:"+pct+"%'></div>";});
+    infoHtml+="</div><div class='sector-legend'>";
+    s.forEach((sec,i)=>{infoHtml+="<div class='sl'><div class='sl-dot' style='background:"+(["#e10600","#00d2be","#ff8700"][i])+"'></div>S"+(i+1)+" — "+sec.length+" ("+sec.from+" → "+sec.to+")</div>";});
+    infoHtml+="</div>";
+    if(fia.intermediate_points){
+      infoHtml+="<div class='section-title'>Points de mesure</div>";
+      fia.intermediate_points.forEach(p=>{infoHtml+="<div class='info-row'><span class='info-lbl'>"+p.name+"</span><span class='info-val'>"+p.position+"</span></div>";});
+    }
+    infoHtml+="<div class='section-title'>Zones Aero Active / Overtake</div>";
+    fia.drs_zones.forEach(z=>{
+      if(z.detection==="n/a"&&z.activation==="n/a")return;
+      infoHtml+="<div class='drs-zone'><div class='drs-zone-name'>Zone "+z.zone+"</div>";
+      if(z.detection!=="n/a")infoHtml+="<div class='drs-row'><span class='drs-lbl'>Detection</span><span class='drs-val'>"+z.detection+"</span></div>";
+      if(z.activation!=="n/a")infoHtml+="<div class='drs-row'><span class='drs-lbl'>Activation SM</span><span class='drs-val'>"+z.activation+"</span></div>";
+      if(z.deactivation&&z.deactivation!=="n/a")infoHtml+="<div class='drs-row'><span class='drs-lbl'>Desactivation</span><span class='drs-val'>"+z.deactivation+"</span></div>";
+      infoHtml+="</div>";
+    });
+    infoHtml+="</div>";
+
+    // Onglet Regles 2026
+    infoHtml+="<div id='tab-rules' class='circuit-tab-content'>";
+    const rules=[
+      {color:"#00d2be",title:"Aero Active (Straight Mode / Corner Mode)",desc:"Les ailerons avant ET arriere s ouvrent automatiquement dans les zones predefinies pour reduire la trainee. En Corner Mode, ils reviennent en position haute-charge. Contrairement au DRS, tous les pilotes peuvent l utiliser.",tag:"Zones A1, A2"+( fia.drs_zones.length>2?", A3":"")+" a ce circuit"},
+      {color:"#e10600",title:"Overtake Mode",desc:"Quand un pilote est a moins d une seconde de la voiture devant au point de detection, il obtient +0.5 MJ d energie supplementaire sur le tour suivant. La voiture de tete voit son deploiement plafonner apres 290 km/h, l attaquant peut utiliser 350 kW jusqu a 337 km/h.",tag:"Detection : "+fia.drs_zones[0].detection},
+      {color:"#ffd700",title:"Boost",desc:"Le pilote peut deployer manuellement l energie de la batterie a tout moment via un bouton sur le volant, pour attaquer ou defendre. L energie est partagee avec l Overtake Mode.",tag:"Utilisable partout — pas de zone restrictive"},
+      {color:"#ff8700",title:"Recharge",desc:"Le MGU-K 2026 fournit jusqu a 8 MJ par tour. L energie est recuperee au freinage, en levee de pied et en super clipping. La recharge est automatisee par l ECU selon des cartographies selectionnables.",tag:"~350 kW · jusqu a 8 MJ par tour"}
+    ];
+    rules.forEach(r=>{
+      infoHtml+="<div class='rule-block' style='border-color:"+r.color+"'><div class='rule-title' style='color:"+r.color+"'>"+r.title+"</div><div class='rule-desc'>"+r.desc+"</div><div class='rule-tag' style='background:"+r.color+"22;color:"+r.color+";border:1px solid "+r.color+"'>"+r.tag+"</div></div>";
+    });
+    infoHtml+="</div>";
+
+    // Onglet Pit Lane
+    infoHtml+="<div id='tab-pit' class='circuit-tab-content'>";
+    infoHtml+="<div class='section-title'>Ordre des ecuries</div>";
+    const garages=fia.pit_lane.garages||{};
+    fia.pit_lane.order.forEach(team=>{
+      const color=getTeamColor(team),garage=garages[team]||"";
+      infoHtml+="<div class='pit-team'><span class='pit-num'>"+garage+"</span><div class='pit-dot' style='background:"+color+"'></div><span style='font-weight:700;font-size:12px'>"+team+"</span></div>";
+    });
+    infoHtml+="<div style='margin-top:10px;font-size:11px;color:#666'>Limite pit lane : "+(fia.pit_lane.speed_limit||80)+" km/h</div>";
+    infoHtml+="</div>";
+  }
+
+  infoHtml+="</div>";
+  document.getElementById("circuit-detail").innerHTML=mapHtml+infoHtml;
+}
+
+function switchCircuitTab(id,btn){
+  document.querySelectorAll(".circuit-tab-content").forEach(c=>c.classList.remove("active"));
+  document.querySelectorAll(".circuit-tab").forEach(b=>b.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  btn.classList.add("active");
+}
+
+function showCircuitsList(){
+  document.getElementById("circuits-list").style.display="block";
+  document.getElementById("circuit-detail-view").style.display="none";
+}
+
+function openModal(el){
+  const gpName=typeof el==="string"?el:el.dataset.name;
+  modalGP=gpName;
+  document.getElementById("modal-gp-name").textContent=gpName;
+  const years=["2024","2025","2026"].filter(y=>(DATA.gp_results[y]||{})[gpName]);
+  modalYear=years[years.length-1]||"2025";
+  document.getElementById("modal-year-tabs").innerHTML=years.map(y=>"<button class='tab"+(y===String(modalYear)?" active":"")+"'  onclick='switchModalYear("+y+",this)'>"+y+"</button>").join("");
+  renderModalContent(gpName,modalYear);
+  document.getElementById("modal-overlay").classList.add("open");
+}
+
+function switchModalYear(year,btn){
+  modalYear=year;
+  document.querySelectorAll("#modal-year-tabs .tab").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  renderModalContent(modalGP,year);
+}
+
+function renderModalContent(gpName,year){
+  const results=(DATA.gp_results[year]||{})[gpName]||[],quali=(DATA.quali_results[year]||{})[gpName]||[];
+  let html="<h3 style='color:#e10600;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px'>Resultats Course</h3>";
+  if(results.length){html+="<table><tr><th>#</th><th>Pilote</th><th>Equipe</th><th>Pts</th></tr>";results.forEach((r,i)=>{html+="<tr><td>"+medals(i)+"</td><td>"+driverCell(r.Abbreviation,r.TeamName)+"</td><td>"+teamPill(r.TeamName)+"</td><td class='pts'>"+r.Points+"</td></tr>";});html+="</table>";}
+  else html+="<p style='color:#666;font-size:13px'>Pas de donnees</p>";
+  if(quali.length){html+="<h3 style='color:#e10600;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:20px 0 12px'>Qualifications</h3><table><tr><th>#</th><th>Pilote</th><th>Q1</th><th>Q2</th><th>Q3</th></tr>";quali.forEach((q,i)=>{html+="<tr><td>"+medals(i)+"</td><td>"+driverCell(q.Abbreviation,q.TeamName)+"</td><td class='time'>"+(q.Q1||"-")+"</td><td class='time'>"+(q.Q2||"-")+"</td><td class='time'>"+(q.Q3||"-")+"</td></tr>";});html+="</table>";}
+  document.getElementById("modal-content").innerHTML=html;
+}
+
+function closeModal(e){if(e.target===document.getElementById("modal-overlay"))document.getElementById("modal-overlay").classList.remove("open");}
+
+function renderOverview(){
+  const drivers=DATA.driver_standings[currentYear]||[],constructors=DATA.constructor_standings[currentYear]||[],teamSeen={};
+  let dHtml="";
+  drivers.slice(0,5).forEach((d,i)=>{dHtml+="<tr><td>"+medals(i)+"</td><td>"+driverCell(d.Abbreviation,d.TeamName)+"</td><td>"+teamPill(d.TeamName)+"</td><td class='pts'>"+d.Points+"</td></tr>";});
+  document.getElementById("overview-drivers").innerHTML=dHtml;
+  let cHtml="";
+  constructors.slice(0,5).forEach((c,i)=>{cHtml+="<tr><td>"+medals(i)+"</td><td>"+teamPill(c.TeamName)+"</td><td class='pts'>"+c.Points+"</td></tr>";});
+  document.getElementById("overview-constructors").innerHTML=cHtml;
+  renderOverviewChart(drivers.slice(0,5));
+}
+
+function renderOverviewChart(top5){
+  const gps=DATA.gp_list[currentYear]||[],tSeen={};
+  const datasets=top5.map(d=>{const color=getTeamColor(d.TeamName),isDash=tSeen[d.TeamName]>0;tSeen[d.TeamName]=(tSeen[d.TeamName]||0)+1;let cum=0;return{label:d.Abbreviation,data:gps.map(gp=>{const r=((DATA.gp_results[currentYear]||{})[gp]||[]).find(x=>x.Abbreviation===d.Abbreviation);cum+=r?r.Points:0;return cum;}),borderColor:color,backgroundColor:color+"22",borderDash:isDash?[6,3]:[],tension:0.3,fill:false,pointRadius:3};});
+  if(overviewChart)overviewChart.destroy();
+  const ctx=document.getElementById("chart-overview").getContext("2d");
+  overviewChart=new Chart(ctx,{type:"line",data:{labels:gps.map(g=>getCC(g)),datasets},options:{plugins:{legend:{labels:{color:"#aaa"}}},scales:{x:{ticks:{color:"#666"},grid:{color:"#222"}},y:{ticks:{color:"#666"},grid:{color:"#222"}}}}});
+}
+
+function renderDrivers(){const drivers=DATA.driver_standings[currentYear]||[];let html="";drivers.forEach((d,i)=>{html+="<tr><td>"+medals(i)+"</td><td>"+driverCell(d.Abbreviation,d.TeamName)+"</td><td>"+teamPill(d.TeamName)+"</td><td class='pts'>"+d.Points+"</td></tr>";});document.getElementById("drivers-table").innerHTML=html;}
+function renderConstructors(){const c=DATA.constructor_standings[currentYear]||[];let html="";c.forEach((t,i)=>{html+="<tr><td>"+medals(i)+"</td><td>"+teamPill(t.TeamName)+"</td><td class='pts'>"+t.Points+"</td></tr>";});document.getElementById("constructors-table").innerHTML=html;}
+
+function renderGPSelector(){const gps=DATA.gp_list[currentYear]||[];document.getElementById("gp-select").innerHTML=gps.map(gp=>"<option value='"+gp+"'>"+getCC(gp)+" - "+gp+"</option>").join("");showGP();}
+
+function showGPTab(tab,btn){document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));btn.classList.add("active");document.getElementById("gp-results-tab").style.display=tab==="results"?"block":"none";document.getElementById("gp-quali-tab").style.display=tab==="quali"?"block":"none";document.getElementById("gp-laps-tab").style.display=tab==="laps"?"block":"none";document.getElementById("gp-tyres-tab").style.display=tab==="tyres"?"block":"none";if(tab==="tyres")renderTyreChart();}
+
+function showGP(){
+  const gp=document.getElementById("gp-select").value;if(!gp)return;
+  selectedDrivers.clear();
+  document.getElementById("gp-title").textContent=getCC(gp)+" - "+gp+" "+currentYear;
+  const results=(DATA.gp_results[currentYear]||{})[gp]||[];
+  document.getElementById("gp-table").innerHTML=results.map((r,i)=>"<tr><td>"+medals(i)+"</td><td>"+driverCell(r.Abbreviation,r.TeamName)+"</td><td>"+teamPill(r.TeamName)+"</td><td class='pts'>"+r.Points+"</td></tr>").join("")||"<tr><td colspan='4' style='color:#666;text-align:center'>Pas de donnees</td></tr>";
+  const quali=(DATA.quali_results[currentYear]||{})[gp]||[];
+  document.getElementById("quali-table").innerHTML=quali.map((q,i)=>"<tr><td>"+medals(i)+"</td><td>"+driverCell(q.Abbreviation,q.TeamName)+"</td><td>"+teamPill(q.TeamName)+"</td><td class='time'>"+(q.Q1||"-")+"</td><td class='time'>"+(q.Q2||"-")+"</td><td class='time'>"+(q.Q3||"-")+"</td></tr>").join("")||"<tr><td colspan='6' style='color:#666;text-align:center'>Pas de donnees</td></tr>";
+  const laps=(DATA.lap_times[currentYear]||{})[gp]||[];
+  document.getElementById("laps-table").innerHTML=laps.map((l,i)=>"<tr><td>"+medals(i)+"</td><td style='color:"+(i===0?"#9b59b6":"#fff")+";font-weight:"+(i===0?"700":"400")+"'>"+l.Driver+"</td><td class='time' style='color:"+(i===0?"#9b59b6":"#00d2be")+"'>"+(l.LapTime||"-")+"</td></tr>").join("")||"<tr><td colspan='3' style='color:#666;text-align:center'>Pas de donnees</td></tr>";
+  renderDriverCheckboxes();
+}
+
+function renderDriverCheckboxes(){
+  const gp=document.getElementById("gp-select").value,strategies=((DATA.tyre_strategies||{})[currentYear]||{})[gp]||{},drivers=Object.keys(strategies);
+  if(!drivers.length){document.getElementById("driver-checkboxes").innerHTML="<p style='color:#666;font-size:13px'>Pas de donnees de pneus</p>";return;}
+  const results=(DATA.gp_results[currentYear]||{})[gp]||[],top5=results.slice(0,5).map(r=>r.Abbreviation);
+  selectedDrivers=new Set(top5.filter(d=>drivers.includes(d)));
+  document.getElementById("driver-checkboxes").innerHTML=drivers.map(driver=>{
+    const isActive=selectedDrivers.has(driver),team=(results.find(r=>r.Abbreviation===driver)||{}).TeamName||"",color=getTeamColor(team),bgColor=isActive?"#fff":"#222",textColor=isActive?"#000":color;
+    return"<div class='driver-checkbox"+(isActive?" active":"")+"'  onclick='toggleDriver(this)' data-driver='"+driver+"' style='border-color:"+(isActive?color:"#333")+";border-left:3px solid "+color+";background:"+bgColor+"'><span style='color:"+textColor+";font-weight:700'>"+driver+"</span></div>";
+  }).join("");
+}
+
+function toggleDriver(el){
+  event.preventDefault();event.stopPropagation();const scrollY=window.scrollY;
+  const driver=el.dataset.driver,gp=document.getElementById("gp-select").value;
+  const team=((DATA.gp_results[currentYear]||{})[gp]||[]).find(r=>r.Abbreviation===driver)||{};
+  const color=getTeamColor(team.TeamName||"");
+  if(selectedDrivers.has(driver)){selectedDrivers.delete(driver);el.classList.remove("active");el.style.borderColor="#333";el.style.backgroundColor="#222";el.querySelector("span").style.color=color;}
+  else{selectedDrivers.add(driver);el.classList.add("active");el.style.borderColor=color;el.style.backgroundColor="#fff";el.querySelector("span").style.color="#000";}
+  renderTyreChart();
+  requestAnimationFrame(()=>window.scrollTo(0,scrollY));
+}
+
+function renderTyreChart(){
+  const gp=document.getElementById("gp-select").value,strategies=((DATA.tyre_strategies||{})[currentYear]||{})[gp]||{};
+  const drivers=Array.from(selectedDrivers).filter(d=>strategies[d]);
+  if(!drivers.length){if(tyreChart){tyreChart.destroy();tyreChart=null;}return;}
+  const driversRev=[...drivers].reverse();
+  let maxLaps=0;drivers.forEach(d=>{const t=(strategies[d].stints||[]).reduce((s,st)=>s+st.laps,0);if(t>maxLaps)maxLaps=t;});
+  const labels=Array.from({length:maxLaps},(_,i)=>i+1),results=(DATA.gp_results[currentYear]||{})[gp]||[],datasets=[];
+  driversRev.forEach((driver,dIdx)=>{
+    const info=strategies[driver],stints=info.stints||[],pitLaps=info.pit_laps||[],yVal=dIdx;
+    stints.forEach((stint,sIdx)=>{
+      const color=TYRE_COLORS[stint.compound]||"#666",startLap=stint.start_lap,endLap=startLap+stint.laps-1,isLast=sIdx===stints.length-1;
+      const dataPoints=Array.from({length:maxLaps},(_,i)=>{const lap=i+1;if(lap>=startLap&&lap<=endLap)return yVal;return null;});
+      const pSizes=dataPoints.map((v,i)=>(!isLast&&i+1===endLap&&v!==null)?8:0);
+      const pStyles=dataPoints.map((v,i)=>(!isLast&&i+1===endLap&&v!==null)?"triangle":"circle");
+      const pColors=dataPoints.map((v,i)=>(!isLast&&i+1===endLap&&v!==null)?"#fff":color);
+      datasets.push({label:sIdx===0?driver:null,data:dataPoints,borderColor:color,backgroundColor:color+"55",borderWidth:8,pointRadius:pSizes,pointStyle:pStyles,pointBackgroundColor:pColors,pointBorderColor:color,showLine:true,tension:0,spanGaps:false});
+    });
+  });
+  if(tyreChart)tyreChart.destroy();
+  const ctx=document.getElementById("chart-tyres").getContext("2d");
+  tyreChart=new Chart(ctx,{type:"line",data:{labels,datasets},options:{animation:false,plugins:{legend:{display:true,labels:{color:"#aaa",filter:item=>item.text!==null&&item.text!=="null"}},tooltip:{callbacks:{label:ctx=>{if(ctx.parsed.y===null)return null;const driver=driversRev[Math.round(ctx.parsed.y)],lap=ctx.parsed.x+1,info=strategies[driver]||{},stint=(info.stints||[]).find(s=>lap>=s.start_lap&&lap<s.start_lap+s.laps);return driver+" : "+(stint?stint.compound:"?");}}}},scales:{x:{title:{display:true,text:"Tour",color:"#666"},ticks:{color:"#666",maxTicksLimit:20},grid:{color:"#222"}},y:{title:{display:true,text:"Pilote",color:"#666"},ticks:{color:"#aaa",callback:v=>driversRev[Math.round(v)]||"",stepSize:1},min:-0.5,max:driversRev.length-0.5,grid:{color:"#333"}}}}});
+}
+
+function renderAll(){renderOverview();renderDrivers();renderConstructors();renderGPSelector();}
+</script>
+</body>
+</html>
